@@ -4,7 +4,7 @@ import os
 import json
 
 app = Flask(__name__)
-
+CORS(app, origins=["https://staging4.bitcoiners.africa"])
 # DB connection
 def get_db_connection():
     return mysql.connector.connect(
