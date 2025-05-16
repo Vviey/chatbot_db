@@ -5,6 +5,10 @@ load_dotenv()
 
 app = Flask(__name__)
 
+@app.route('/')
+def home():
+    return "Chatbot API is live!"
+
 @app.route('/chat', methods=['POST'])
 def chat():
     data = request.get_json()
