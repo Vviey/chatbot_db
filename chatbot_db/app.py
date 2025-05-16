@@ -1,37 +1,36 @@
 from flask import Flask, request, jsonify
-from interaction_logger import log_interaction
-from dotenv import load_dotenv
-load_dotenv()
+import requests
+import mysql.connector
+import os
 
 app = Flask(__name__)
 
-@app.route('/')
-def home():
-    return "Chatbot API is live!"
-
-@app.route('/chat', methods=['POST'])
+@app.route("/chat", methods=["POST"])
 def chat():
     data = request.get_json()
-    user_id = data.get('user_id')
-    session_id = data.get('session_id')
-    user_input = data.get('user_input')
-    ai_response = data.get('ai_response')
-    ai_response_links = data.get('ai_response_links')
-    keywords = data.get('keywords')
-    keyword_counts = data.get('keyword_counts')
-    ip_address = request.remote_addr
-    response_time = data.get('response_time')
+    user_input = data["user_input"]
+    user_id = data["user_id"]
+    session_id = data["session_id"]
 
-    log_interaction(
-        user_id=user_id,
-        session_id=session_id,
-        user_input=user_input,
-        ai_response=ai_response,
-        ai_response_links=ai_response_links,
-        keywords=keywords,
-        keyword_counts=keyword_counts,
-        ip_address=ip_address,
-        response_time=response_time
+    # 🔁 Send to chatbot API
+    chatbot_url = "https://chatbot-q6k0.onrender.com/chat"
+    chatbot_response = requests.post(chatbot_url, json={"message": user_input})
+    ai_response = chatbot_response.json().get("response", "Sorry, no response.")
+
+    # 🗃️ Save to DB
+    conn = mysql.connector.connect(
+        host=os.getenv("DB_HOST"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASSWORD"),
+        database=os.getenv("DB_NAME")
     )
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO wp_ai_chatbot (user_id, session_id, user_input, ai_response) VALUES (%s, %s, %s, %s)",
+        (user_id, session_id, user_input, ai_response)
+    )
+    conn.commit()
+    cursor.close()
+    conn.close()
 
-    return jsonify({'status': 'logged'})
+    return jsonify({"status": "logged", "ai_response": ai_response})
