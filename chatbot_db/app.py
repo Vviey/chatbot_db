@@ -2,11 +2,10 @@ from flask import Flask, request, jsonify
 import mysql.connector
 import os
 from flask_cors import CORS
-import json
 
 app = Flask(__name__)
 CORS(app, origins=["https://staging4.bitcoiners.africa"])
-# DB connection
+
 def get_db_connection():
     return mysql.connector.connect(
         host=os.environ['DB_HOST'],
@@ -17,7 +16,7 @@ def get_db_connection():
 
 @app.route('/')
 def index():
-    return "Chatbot DB API is running!"
+    return "Chatbot API is running!"
 
 @app.route('/chat', methods=['POST'])
 def log_chat():
@@ -26,49 +25,44 @@ def log_chat():
     session_id = data.get('session_id')
     user_input = data.get('user_input')
     ai_response = data.get('ai_response')
+    ai_response_links = data.get('ai_response_links')  # optional
+    keywords = data.get('keywords')  # optional
+    keyword_counts = data.get('keyword_counts')  # optional, should be JSON/dict
 
     if not all([user_id, session_id, user_input, ai_response]):
-        return jsonify({'status': 'error', 'message': 'Missing fields'}), 400
+        return jsonify({'status': 'error', 'message': 'Missing required fields'}), 400
 
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Check if session already exists
-    cursor.execute("SELECT conversation_json FROM wp_ai_chatbot WHERE user_id=%s AND session_id=%s", (user_id, session_id))
-    result = cursor.fetchone()
+    # Insert each chat interaction as a new row
+    sql = """
+    INSERT INTO wp_ai_chatbot
+    (user_id, session_id, user_input, ai_response, ai_response_links, keywords, keyword_counts)
+    VALUES (%s, %s, %s, %s, %s, %s, %s)
+    """
 
-    if result:
-        conversation_data = result[0] or {"conversation": []}
-        if isinstance(conversation_data, str):
-            conversation_data = json.loads(conversation_data)
+    # Convert keyword_counts dict to JSON string if provided
+    keyword_counts_json = None
+    if keyword_counts:
+        import json
+        keyword_counts_json = json.dumps(keyword_counts)
 
-        conversation_data["conversation"].append({
-            "user": user_input,
-            "ai": ai_response
-        })
-
-        cursor.execute(
-            "UPDATE wp_ai_chatbot SET conversation_json=%s WHERE user_id=%s AND session_id=%s",
-            (json.dumps(conversation_data), user_id, session_id)
-        )
-    else:
-        conversation_data = {
-            "conversation": [{
-                "user": user_input,
-                "ai": ai_response
-            }]
-        }
-
-        cursor.execute(
-            "INSERT INTO wp_ai_chatbot (user_id, session_id, conversation_json) VALUES (%s, %s, %s)",
-            (user_id, session_id, json.dumps(conversation_data))
-        )
+    cursor.execute(sql, (
+        user_id,
+        session_id,
+        user_input,
+        ai_response,
+        ai_response_links,
+        keywords,
+        keyword_counts_json
+    ))
 
     conn.commit()
     cursor.close()
     conn.close()
 
-    return jsonify({"status": "logged", "conversation": conversation_data})
+    return jsonify({"status": "logged"})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
