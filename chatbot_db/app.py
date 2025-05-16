@@ -15,6 +15,10 @@ def get_db_connection():
         database=os.environ['DB_NAME']
     )
 
+@app.route('/')
+def index():
+    return "Chatbot DB API is running!"
+
 @app.route('/chat', methods=['POST'])
 def log_chat():
     data = request.get_json()
