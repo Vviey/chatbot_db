@@ -4,15 +4,26 @@ import os
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app, origins=["https://staging4.bitcoiners.africa"])
+CORS(app, origins=["https://staging4.bitcoiners.africa", "https://bitcoiners.africa"])
 
-def get_db_connection():
+#STAGING
+def get_db1_connection():
     return mysql.connector.connect(
         host=os.environ['DB_HOST'],
         user=os.environ['DB_USER'],
         password=os.environ['DB_PASSWORD'],
         database=os.environ['DB_NAME']
     )
+
+#LIVE
+def get_db2_connection():
+    return mysql.connector.connect(
+        host=os.environ['DB2_HOST'],
+        user=os.environ['DB2_USER'],
+        password=os.environ['DB2_PASSWORD'],
+        database=os.environ['DB2_NAME']
+    )
+
 
 @app.route('/')
 def index():
