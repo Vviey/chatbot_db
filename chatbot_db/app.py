@@ -2,17 +2,36 @@ from flask import Flask, request, jsonify
 import mysql.connector
 import os
 from flask_cors import CORS
+import json
 
 app = Flask(__name__)
-CORS(app, origins=["https://staging4.bitcoiners.africa"])
+CORS(app, origins=["https://staging4.bitcoiners.africa", "https://bitcoiners.africa"])
 
-def get_db_connection():
+# STAGING DB (default)
+def get_db1_connection():
     return mysql.connector.connect(
         host=os.environ['DB_HOST'],
         user=os.environ['DB_USER'],
         password=os.environ['DB_PASSWORD'],
         database=os.environ['DB_NAME']
     )
+
+# LIVE DB
+def get_db2_connection():
+    return mysql.connector.connect(
+        host=os.environ['DB2_HOST'],
+        user=os.environ['DB2_USER'],
+        password=os.environ['DB2_PASSWORD'],
+        database=os.environ['DB2_NAME']
+    )
+
+# Choose based on Origin
+def get_db_connection():
+    origin = request.headers.get("Origin", "")
+    if "bitcoiners.africa" in origin:
+        return get_db2_connection()  # LIVE
+    else:
+        return get_db1_connection()  # STAGING
 
 @app.route('/')
 def index():
@@ -45,7 +64,6 @@ def log_chat():
     # Convert keyword_counts dict to JSON string if provided
     keyword_counts_json = None
     if keyword_counts:
-        import json
         keyword_counts_json = json.dumps(keyword_counts)
 
     cursor.execute(sql, (
