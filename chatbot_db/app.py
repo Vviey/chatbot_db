@@ -1,12 +1,13 @@
 from flask import Flask, request, jsonify
 import mysql.connector
 import os
+import json
 from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app, origins=["https://staging4.bitcoiners.africa", "https://bitcoiners.africa"])
 
-#STAGING
+# STAGING database connection
 def get_db1_connection():
     return mysql.connector.connect(
         host=os.environ['DB_HOST'],
@@ -15,7 +16,7 @@ def get_db1_connection():
         database=os.environ['DB_NAME']
     )
 
-#LIVE
+# LIVE database connection
 def get_db2_connection():
     return mysql.connector.connect(
         host=os.environ['DB2_HOST'],
@@ -24,6 +25,13 @@ def get_db2_connection():
         database=os.environ['DB2_NAME']
     )
 
+# Choose database based on Origin header
+def get_db_connection():
+    origin = request.headers.get("Origin", "")
+    if "bitcoiners.africa" in origin and "staging4.bitcoiners.africa" not in origin:
+        return get_db2_connection()  # Live (default)
+    else:
+        return get_db1_connection()  # Staging or unknown
 
 @app.route('/')
 def index():
@@ -37,43 +45,43 @@ def log_chat():
     user_input = data.get('user_input')
     ai_response = data.get('ai_response')
     ai_response_links = data.get('ai_response_links')  # optional
-    keywords = data.get('keywords')  # optional
-    keyword_counts = data.get('keyword_counts')  # optional, should be JSON/dict
+    keywords = data.get('keywords')                    # optional
+    keyword_counts = data.get('keyword_counts')        # optional (expected as dict)
 
+    # Basic validation
     if not all([user_id, session_id, user_input, ai_response]):
         return jsonify({'status': 'error', 'message': 'Missing required fields'}), 400
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
 
-    # Insert each chat interaction as a new row
-    sql = """
-    INSERT INTO wp_ai_chatbot
-    (user_id, session_id, user_input, ai_response, ai_response_links, keywords, keyword_counts)
-    VALUES (%s, %s, %s, %s, %s, %s, %s)
-    """
+        sql = """
+        INSERT INTO wp_ai_chatbot
+        (user_id, session_id, user_input, ai_response, ai_response_links, keywords, keyword_counts)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """
 
-    # Convert keyword_counts dict to JSON string if provided
-    keyword_counts_json = None
-    if keyword_counts:
-        import json
-        keyword_counts_json = json.dumps(keyword_counts)
+        keyword_counts_json = json.dumps(keyword_counts) if keyword_counts else None
 
-    cursor.execute(sql, (
-        user_id,
-        session_id,
-        user_input,
-        ai_response,
-        ai_response_links,
-        keywords,
-        keyword_counts_json
-    ))
+        cursor.execute(sql, (
+            user_id,
+            session_id,
+            user_input,
+            ai_response,
+            ai_response_links,
+            keywords,
+            keyword_counts_json
+        ))
 
-    conn.commit()
-    cursor.close()
-    conn.close()
+        conn.commit()
+        cursor.close()
+        conn.close()
 
-    return jsonify({"status": "logged"})
+        return jsonify({"status": "logged"})
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 10000))
