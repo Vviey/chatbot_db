@@ -28,7 +28,7 @@ def get_db2_connection():
 # Choose database based on Origin header
 def get_db_connection():
     origin = request.headers.get("Origin", "")
-    if "bitcoiners.africa" in origin and "staging4.bitcoiners.africa" not in origin:
+    if "bitcoiners.africa" in origin :
         return get_db2_connection()  # Live (default)
     else:
         return get_db1_connection()  # Staging or unknown
