@@ -8,22 +8,22 @@ app = Flask(__name__)
 CORS(app, origins=["https://staging4.bitcoiners.africa", "https://bitcoiners.africa"])
 
 # STAGING database connection
-# def get_db1_connection():
-#     return mysql.connector.connect(
-#         host=os.environ['DB_HOST'],
-#         user=os.environ['DB_USER'],
-#         password=os.environ['DB_PASSWORD'],
-#         database=os.environ['DB_NAME']
-#     )
+def get_db1_connection():
+    return mysql.connector.connect(
+        host=os.environ['DB_HOST'],
+        user=os.environ['DB_USER'],
+        password=os.environ['DB_PASSWORD'],
+        database=os.environ['DB_NAME']
+    )
 
 # LIVE database connection
-def get_db_connection():
-    return mysql.connector.connect(
-        host=os.environ['DB2_HOST'],
-        user=os.environ['DB2_USER'],
-        password=os.environ['DB2_PASSWORD'],
-        database=os.environ['DB2_NAME']
-    )
+# def get_db_connection():
+#     return mysql.connector.connect(
+#         host=os.environ['DB2_HOST'],
+#         user=os.environ['DB2_USER'],
+#         password=os.environ['DB2_PASSWORD'],
+#         database=os.environ['DB2_NAME']
+#     )
 
 # # Choose database based on Origin header
 # def get_db_connection():
